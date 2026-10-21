@@ -1,0 +1,31 @@
+---
+- name: Installer Nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+
+- name: Déployer le vhost du portfolio
+  ansible.builtin.template:
+    src: portfolio.conf.j2
+    dest: /etc/nginx/sites-available/portfolio.conf
+    mode: "0644"
+  notify: Recharger Nginx
+
+- name: Activer le site
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/portfolio.conf
+    dest: /etc/nginx/sites-enabled/portfolio.conf
+    state: link
+  notify: Recharger Nginx
+
+- name: Désactiver le site par défaut
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Recharger Nginx
+
+- name: Nginx démarré et activé au boot
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true

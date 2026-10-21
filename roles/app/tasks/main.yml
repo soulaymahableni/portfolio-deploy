@@ -1,0 +1,65 @@
+---
+- name: Créer le dossier de l'application
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0755"
+
+- name: Cloner / mettre à jour le dépôt
+  ansible.builtin.git:
+    repo: "{{ app_repo }}"
+    dest: "{{ app_dir }}"
+    version: "{{ app_version }}"
+    force: true
+  become_user: "{{ app_user }}"
+  register: repo
+  notify: Redémarrer l'application
+
+- name: Vérifier si un build existe déjà
+  ansible.builtin.stat:
+    path: "{{ app_dir }}/.next/BUILD_ID"
+  register: build_id
+
+- name: Installer les dépendances (npm ci)
+  ansible.builtin.command: npm ci
+  args:
+    chdir: "{{ app_dir }}"
+  become_user: "{{ app_user }}"
+  when: repo.changed or not build_id.stat.exists
+  changed_when: true
+
+- name: Builder l'application
+  ansible.builtin.command: npm run build
+  args:
+    chdir: "{{ app_dir }}"
+  become_user: "{{ app_user }}"
+  when: repo.changed or not build_id.stat.exists
+  changed_when: true
+
+- name: Vérifier si l'application est déjà dans PM2
+  ansible.builtin.command: pm2 describe {{ app_name }}
+  become_user: "{{ app_user }}"
+  register: pm2_status
+  changed_when: false
+  failed_when: false
+
+- name: Démarrer l'application avec PM2
+  ansible.builtin.command: pm2 start npm --name {{ app_name }} -- start -- -p {{ app_port }}
+  args:
+    chdir: "{{ app_dir }}"
+  become_user: "{{ app_user }}"
+  when: pm2_status.rc != 0
+  changed_when: true
+
+- name: Sauvegarder la liste des processus PM2
+  ansible.builtin.command: pm2 save
+  become_user: "{{ app_user }}"
+  when: pm2_status.rc != 0
+  changed_when: true
+
+- name: Activer le démarrage automatique de PM2 au boot
+  ansible.builtin.command: pm2 startup systemd -u {{ app_user }} --hp /home/{{ app_user }}
+  args:
+    creates: "/etc/systemd/system/pm2-{{ app_user }}.service"

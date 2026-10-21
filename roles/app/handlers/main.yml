@@ -1,0 +1,5 @@
+---
+- name: Redémarrer l'application
+  ansible.builtin.command: pm2 restart {{ app_name }} --update-env
+  become_user: "{{ app_user }}"
+  changed_when: true

@@ -1,0 +1,9 @@
+# Dépôt Git de l'application Next.js (à remplacer par VOTRE dépôt public)
+app_repo: "https://github.com/soulaymahableni/portfolio-app.git"
+app_version: "main"          # branche ou tag (surchargé par le Survey de Semaphore)
+app_dir: "/opt/portfolio"
+app_port: 3001               # 3000 est déjà occupé par un conteneur Docker sur la cible
+app_name: "portfolio"
+app_user: "deploy"
+server_name: "portfolio.local"
+nodejs_major: 22
